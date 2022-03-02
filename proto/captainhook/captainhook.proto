@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option go_package = "github.com/belljustin/captainhook";
+
+package captainhook;
+
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+// The captainhook service definition.
+service Captainhook {
+  // Creates an application
+  rpc CreateApplication (CreateApplicationRequest) returns (Application) {
+    option (google.api.http) = {
+      post: "/v1/application"
+      body: "*"
+    };
+  }
+  // Gets an application
+  rpc GetApplication (GetApplicationRequest) returns (Application) {
+    option (google.api.http) = {
+      get: "/v1/application/{id}"
+    };
+  }
+}
+
+// The application creation request message containing the application name
+message CreateApplicationRequest {
+  string tenant_id = 1;
+  string name = 2;
+}
+
+// The application request to get more details about an application
+message GetApplicationRequest {
+  string tenant_id = 1;
+  string id = 2;
+}
+
+// The message containing an application
+message Application {
+  string tenant_id = 1;
+  string id = 2;
+  string name = 3;
+  google.protobuf.Timestamp create_time = 4;
+  google.protobuf.Timestamp update_time = 5;
+}
