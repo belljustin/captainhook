@@ -38,6 +38,18 @@ func getApplication(client pb.CaptainhookClient, getApp *pb.GetApplicationReques
 	log.Println(app)
 }
 
+func createMessage(client pb.CaptainhookClient, createMsg *pb.CreateMessageRequest) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	msg, err := client.CreateMessage(ctx, createMsg)
+	if err != nil {
+		log.Fatalf("%v.CreateMessage(_) = _, %v: ", client, err)
+	}
+	log.Println(msg)
+
+	return msg.Id
+}
+
 func main() {
 	flag.Parse()
 
@@ -51,6 +63,12 @@ func main() {
 	defer conn.Close()
 	client := pb.NewCaptainhookClient(conn)
 
-	id := createApplication(client, &pb.CreateApplicationRequest{Name: "app_name"})
-	getApplication(client, &pb.GetApplicationRequest{Id: id})
+	appID := createApplication(client, &pb.CreateApplicationRequest{Name: "app_name"})
+	getApplication(client, &pb.GetApplicationRequest{Id: appID})
+
+	createMessage(client, &pb.CreateMessageRequest{
+		ApplicationId: appID,
+		Type:          "ch/test",
+		Data:          []byte("hello world"),
+	})
 }

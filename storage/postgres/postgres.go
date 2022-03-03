@@ -39,3 +39,9 @@ func (s *Storage) GetApplication(ctx context.Context, tenantID, id uuid.UUID) (*
 	err := s.db.Get(&app, "SELECT * FROM applications WHERE tenant_id = $1 AND id = $2", tenantID, id)
 	return &app, err
 }
+
+func (s *Storage) NewMessage(ctx context.Context, msg *captainhook.Message) (*captainhook.Message, error) {
+	_, err := s.db.NamedExec("INSERT INTO messages (id, tenant_id, application_id, type, data, state, signature, create_time, update_time) "+
+		"VALUES (:id, :tenant_id, :application_id, :type, :data, :state, :signature, :create_time, :update_time)", msg)
+	return msg, err
+}

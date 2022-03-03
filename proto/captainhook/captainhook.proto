@@ -22,6 +22,13 @@ service Captainhook {
       get: "/v1/application/{id}"
     };
   }
+
+  rpc CreateMessage (CreateMessageRequest) returns (MessageReceipt) {
+    option (google.api.http) = {
+      post: "/v1/application/{application_id}/messages"
+      body: "*"
+    };
+  }
 }
 
 // The application creation request message containing the application name
@@ -43,4 +50,35 @@ message Application {
   string name = 3;
   google.protobuf.Timestamp create_time = 4;
   google.protobuf.Timestamp update_time = 5;
+}
+
+// The message creation request
+message CreateMessageRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string type = 4;
+  bytes data = 5;
+}
+
+message MessageReceipt {
+  string tenant_id = 1;
+  string id = 2;
+  string application_id = 3;
+}
+
+// The message containing a message that will be broadcast to an application
+message Message {
+  string tenant_id = 1;
+  string application_id = 2;
+  string id = 3;
+  string type = 4;
+  bytes data = 5;
+  enum State {
+    PENDING = 0;
+    SUCCESS = 1;
+    FAILED = 2;
+  }
+  State state = 6;
+  google.protobuf.Timestamp create_time = 7;
+  google.protobuf.Timestamp update_time = 8;
 }

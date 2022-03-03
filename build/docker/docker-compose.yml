@@ -10,3 +10,8 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_PASSWORD=password
+  asynqmon:
+    image: hibiken/asynqmon:0.6
+    ports:
+      - "8080:8080"
+    command: --redis-addr=redis:6379

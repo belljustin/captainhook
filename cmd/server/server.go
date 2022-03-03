@@ -8,13 +8,15 @@ import (
 	pb "github.com/belljustin/captainhook/proto/captainhook"
 	"github.com/belljustin/captainhook/storage/postgres"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 )
 
 var (
-	port = flag.Int("port", 50051, "The server port")
+	port      = flag.Int("port", 50051, "The server port")
+	redisAddr = flag.String("redisAddr", "localhost:6379", "The redis address")
 
 	defaultTenantID, _ = uuid.FromBytes([]byte("default"))
 )
@@ -22,7 +24,8 @@ var (
 type server struct {
 	pb.UnimplementedCaptainhookServer
 
-	storage captainhook.Storage
+	storage     captainhook.Storage
+	asynqClient *asynq.Client
 }
 
 func (s *server) CreateApplication(ctx context.Context, createApp *pb.CreateApplicationRequest) (*pb.Application, error) {
@@ -40,7 +43,10 @@ func (s *server) CreateApplication(ctx context.Context, createApp *pb.CreateAppl
 
 func (s *server) GetApplication(ctx context.Context, getApp *pb.GetApplicationRequest) (*pb.Application, error) {
 	sID := getApp.GetId()
-	id, _ := uuid.Parse(sID)
+	id, err := uuid.Parse(sID)
+	if err != nil {
+		return nil, err
+	}
 
 	tenantID, err := parseTenantIDString(getApp.GetTenantId())
 	if err != nil {
@@ -52,6 +58,28 @@ func (s *server) GetApplication(ctx context.Context, getApp *pb.GetApplicationRe
 		return nil, err
 	}
 	return app.ToProtobuf(), nil
+}
+
+func (s *server) CreateMessage(ctx context.Context, createMsg *pb.CreateMessageRequest) (*pb.MessageReceipt, error) {
+	tenantID, err := parseTenantIDString(createMsg.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+
+	appID, err := uuid.Parse(createMsg.GetApplicationId())
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := captainhook.CreateMessage(s.asynqClient, tenantID, appID, createMsg.GetType(), createMsg.GetData())
+	if err != nil {
+		return nil, err
+	}
+	return &pb.MessageReceipt{
+		TenantId:      tenantID.String(),
+		Id:            id.String(),
+		ApplicationId: appID.String(),
+	}, nil
 }
 
 func parseTenantIDString(sTenantID string) (uuid.UUID, error) {
@@ -70,7 +98,8 @@ func main() {
 	}
 	s := grpc.NewServer()
 	storage := postgres.NewStorage()
-	pb.RegisterCaptainhookServer(s, &server{storage: storage})
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: *redisAddr})
+	pb.RegisterCaptainhookServer(s, &server{storage: storage, asynqClient: asynqClient})
 	log.Printf("server listening at %v", lis.Addr())
 
 	if err := s.Serve(lis); err != nil {

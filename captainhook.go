@@ -2,6 +2,7 @@ package captainhook
 
 import (
 	"context"
+	"github.com/hibiken/asynq"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,12 +14,16 @@ import (
 type Storage interface {
 	NewApplication(ctx context.Context, app *Application) (*Application, error)
 	GetApplication(ctx context.Context, tenantID, id uuid.UUID) (*Application, error)
+
+	NewMessage(ctx context.Context, msg *Message) (*Message, error)
 }
 
 type Application struct {
-	TenantID   uuid.UUID `db:"tenant_id"`
-	ID         uuid.UUID
-	Name       string
+	TenantID uuid.UUID `db:"tenant_id"`
+	ID       uuid.UUID
+
+	Name string
+
 	CreateTime time.Time `db:"create_time"`
 	UpdateTime time.Time `db:"update_time"`
 }
@@ -49,4 +54,31 @@ func (app Application) ToProtobuf() *pb.Application {
 
 func GetApplication(storage Storage, tenantID, id uuid.UUID) (*Application, error) {
 	return storage.GetApplication(context.Background(), tenantID, id)
+}
+
+type Message struct {
+	TenantID uuid.UUID `db:"tenant_id"`
+	ID       uuid.UUID
+
+	ApplicationID uuid.UUID `db:"application_id"`
+	Type          string
+	Data          []byte
+	State         string
+	Signature     []byte
+
+	CreateTime time.Time `db:"create_time"`
+	UpdateTime time.Time `db:"update_time"`
+}
+
+func CreateMessage(asynqClient *asynq.Client, tenantID, appID uuid.UUID, msgType string, data []byte) (uuid.UUID, error) {
+	id, _ := uuid.NewRandom()
+	t1, err := NewSignMessageTask(id, tenantID, appID, msgType, data)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	if _, err := asynqClient.Enqueue(t1); err != nil {
+		return uuid.UUID{}, err
+	}
+	return id, nil
 }
