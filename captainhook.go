@@ -16,6 +16,13 @@ type Storage interface {
 	GetApplication(ctx context.Context, tenantID, id uuid.UUID) (*Application, error)
 
 	NewMessage(ctx context.Context, msg *Message) (*Message, error)
+
+	NewSubscription(ctx context.Context, sub *Subscription) (*Subscription, error)
+}
+
+type TimeDetails struct {
+	CreateTime time.Time `db:"create_time"`
+	UpdateTime time.Time `db:"update_time"`
 }
 
 type Application struct {
@@ -24,8 +31,7 @@ type Application struct {
 
 	Name string
 
-	CreateTime time.Time `db:"create_time"`
-	UpdateTime time.Time `db:"update_time"`
+	TimeDetails
 }
 
 func NewApplication(storage Storage, tenantID uuid.UUID, name string) (*Application, error) {
@@ -33,11 +39,13 @@ func NewApplication(storage Storage, tenantID uuid.UUID, name string) (*Applicat
 	now := time.Now()
 
 	app := &Application{
-		TenantID:   tenantID,
-		ID:         id,
-		Name:       name,
-		CreateTime: now,
-		UpdateTime: now,
+		TenantID: tenantID,
+		ID:       id,
+		Name:     name,
+		TimeDetails: TimeDetails{
+			CreateTime: now,
+			UpdateTime: now,
+		},
 	}
 	return storage.NewApplication(context.Background(), app)
 }
@@ -66,13 +74,41 @@ type Message struct {
 	State         string
 	Signature     []byte
 
-	CreateTime time.Time `db:"create_time"`
-	UpdateTime time.Time `db:"update_time"`
+	TimeDetails
 }
 
 func CreateMessage(asynqClient *asynq.Client, tenantID, appID uuid.UUID, msgType string, data []byte) (uuid.UUID, error) {
 	id, _ := uuid.NewRandom()
 	t1, err := NewSignMessageTask(id, tenantID, appID, msgType, data)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	if _, err := asynqClient.Enqueue(t1); err != nil {
+		return uuid.UUID{}, err
+	}
+	return id, nil
+}
+
+type Subscription struct {
+	TenantID uuid.UUID `db:"tenant_id"`
+	ID       uuid.UUID
+
+	ApplicationID uuid.UUID `db:"application_id"`
+	Name          string
+	Types         []string
+	State         string
+
+	TimeDetails
+}
+
+func (s *Subscription) ToProtobuf() *pb.Subscription {
+	return nil
+}
+
+func CreateSubscription(asynqClient *asynq.Client, tenantID, appID uuid.UUID, name string, types []string) (uuid.UUID, error) {
+	id, _ := uuid.NewRandom()
+	t1, err := NewCreateSubscriptionTask(id, tenantID, appID, name, types)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

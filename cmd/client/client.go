@@ -50,6 +50,18 @@ func createMessage(client pb.CaptainhookClient, createMsg *pb.CreateMessageReque
 	return msg.Id
 }
 
+func createSubscription(client pb.CaptainhookClient, createSub *pb.CreateSubscriptionRequest) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	sub, err := client.CreateSubscription(ctx, createSub)
+	if err != nil {
+		log.Fatalf("%v.CreateSubscription(_) = _, %v: ", client, err)
+	}
+	log.Println(sub)
+
+	return sub.Id
+}
+
 func main() {
 	flag.Parse()
 
@@ -70,5 +82,11 @@ func main() {
 		ApplicationId: appID,
 		Type:          "ch/test",
 		Data:          []byte("hello world"),
+	})
+
+	createSubscription(client, &pb.CreateSubscriptionRequest{
+		ApplicationId: appID,
+		Name:          "testSubscription",
+		Types:         []string{"app/payments", "app/withdrawals"},
 	})
 }

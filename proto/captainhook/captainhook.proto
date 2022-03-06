@@ -29,6 +29,13 @@ service Captainhook {
       body: "*"
     };
   }
+
+  rpc CreateSubscription (CreateSubscriptionRequest) returns (SubscriptionReceipt) {
+    option (google.api.http) = {
+      post: "/v1/application/{application_id}/subscriptions"
+      body: "*"
+    };
+  }
 }
 
 // The application creation request message containing the application name
@@ -76,6 +83,35 @@ message Message {
   enum State {
     PENDING = 0;
     SUCCESS = 1;
+    FAILED = 2;
+  }
+  State state = 6;
+  google.protobuf.Timestamp create_time = 7;
+  google.protobuf.Timestamp update_time = 8;
+}
+
+message CreateSubscriptionRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string name = 3;
+  repeated string types = 4;
+}
+
+message SubscriptionReceipt {
+  string tenant_id = 1;
+  string application_id = 2;
+  string id = 3;
+}
+
+message Subscription {
+  string tenant_id = 1;
+  string id = 2;
+  string application_id = 3;
+  string name = 4;
+  repeated string types = 5;
+  enum State {
+    PENDING = 0;
+    ACTIVE = 1;
     FAILED = 2;
   }
   State state = 6;

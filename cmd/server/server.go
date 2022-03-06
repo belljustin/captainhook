@@ -82,6 +82,28 @@ func (s *server) CreateMessage(ctx context.Context, createMsg *pb.CreateMessageR
 	}, nil
 }
 
+func (s *server) CreateSubscription(ctx context.Context, createSub *pb.CreateSubscriptionRequest) (*pb.SubscriptionReceipt, error) {
+	tenantID, err := parseTenantIDString(createSub.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+
+	appID, err := uuid.Parse(createSub.GetApplicationId())
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := captainhook.CreateSubscription(s.asynqClient, tenantID, appID, createSub.GetName(), createSub.GetTypes())
+	if err != nil {
+		return nil, err
+	}
+	return &pb.SubscriptionReceipt{
+		TenantId:      tenantID.String(),
+		ApplicationId: appID.String(),
+		Id:            id.String(),
+	}, nil
+}
+
 func parseTenantIDString(sTenantID string) (uuid.UUID, error) {
 	if sTenantID == "" {
 		return defaultTenantID, nil

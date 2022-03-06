@@ -45,3 +45,7 @@ func (s *Storage) NewMessage(ctx context.Context, msg *captainhook.Message) (*ca
 		"VALUES (:id, :tenant_id, :application_id, :type, :data, :state, :signature, :create_time, :update_time)", msg)
 	return msg, err
 }
+
+func (s *Storage) NewSubscription(ctx context.Context, sub *captainhook.Subscription) (*captainhook.Subscription, error) {
+	return nil, nil
+}
