@@ -2,10 +2,12 @@ package main
 
 import (
 	"flag"
+	"log"
+
+	"github.com/hibiken/asynq"
+
 	"github.com/belljustin/captainhook"
 	"github.com/belljustin/captainhook/storage/postgres"
-	"github.com/hibiken/asynq"
-	"log"
 )
 
 var (

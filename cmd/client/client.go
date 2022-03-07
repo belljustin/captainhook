@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/belljustin/captainhook/proto/captainhook"
 )

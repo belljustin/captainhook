@@ -5,16 +5,18 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/belljustin/captainhook"
-	pb "github.com/belljustin/captainhook/proto/captainhook"
-	"github.com/belljustin/captainhook/storage/postgres"
-	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/belljustin/captainhook/storage/postgres"
+	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+	"google.golang.org/grpc"
+
+	"github.com/belljustin/captainhook"
+	pb "github.com/belljustin/captainhook/proto/captainhook"
 )
 
 var (

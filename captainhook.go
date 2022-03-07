@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
-	"github.com/hibiken/asynq"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/belljustin/captainhook/proto/captainhook"

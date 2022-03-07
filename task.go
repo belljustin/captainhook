@@ -3,12 +3,14 @@ package captainhook
 import (
 	"context"
 	"encoding/json"
-	pb "github.com/belljustin/captainhook/proto/captainhook"
-	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 	"log"
 	"net/url"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+
+	pb "github.com/belljustin/captainhook/proto/captainhook"
 )
 
 const (
