@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS subscriptions(
     tenant_id       uuid    NOT NULL,
     application_id  uuid    NOT NULL,
     name            TEXT    NOT NULL,
+    endpoint        TEXT    NOT NULL,
     types           TEXT[],
     state           TEXT    NOT NULL,
 

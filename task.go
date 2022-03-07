@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"log"
+	"net/url"
 	"time"
 )
 
@@ -77,15 +78,17 @@ type createSubscriptionPayload struct {
 	ID            uuid.UUID
 	Name          string
 	Types         []string
+	Endpoint      *url.URL
 }
 
-func NewCreateSubscriptionTask(id, tenantID, appID uuid.UUID, name string, types []string) (*asynq.Task, error) {
+func NewCreateSubscriptionTask(id, tenantID, appID uuid.UUID, name string, types []string, endpoint *url.URL) (*asynq.Task, error) {
 	payload, err := json.Marshal(createSubscriptionPayload{
 		TenantID:      tenantID,
 		ApplicationID: appID,
 		ID:            id,
 		Name:          name,
 		Types:         types,
+		Endpoint:      endpoint,
 	})
 	if err != nil {
 		return nil, err
@@ -115,6 +118,7 @@ func (h *CreateSubscriptionTaskHandler) HandleCreateSubscription(ctx context.Con
 		Name:          p.Name,
 		Types:         p.Types,
 		State:         pb.Subscription_PENDING.String(),
+		Endpoint:      p.Endpoint,
 
 		TimeDetails: TimeDetails{
 			CreateTime: now,

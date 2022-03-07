@@ -3,6 +3,7 @@ package captainhook
 import (
 	"context"
 	"github.com/hibiken/asynq"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -98,6 +99,7 @@ type Subscription struct {
 	Name          string
 	Types         []string
 	State         string
+	Endpoint      *url.URL
 
 	TimeDetails
 }
@@ -106,9 +108,9 @@ func (s *Subscription) ToProtobuf() *pb.Subscription {
 	return nil
 }
 
-func CreateSubscription(asynqClient *asynq.Client, tenantID, appID uuid.UUID, name string, types []string) (uuid.UUID, error) {
+func CreateSubscription(asynqClient *asynq.Client, tenantID, appID uuid.UUID, name string, types []string, endpoint *url.URL) (uuid.UUID, error) {
 	id, _ := uuid.NewRandom()
-	t1, err := NewCreateSubscriptionTask(id, tenantID, appID, name, types)
+	t1, err := NewCreateSubscriptionTask(id, tenantID, appID, name, types, endpoint)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

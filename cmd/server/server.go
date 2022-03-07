@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/belljustin/captainhook"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"net/url"
 )
 
 var (
@@ -93,7 +95,15 @@ func (s *server) CreateSubscription(ctx context.Context, createSub *pb.CreateSub
 		return nil, err
 	}
 
-	id, err := captainhook.CreateSubscription(s.asynqClient, tenantID, appID, createSub.GetName(), createSub.GetTypes())
+	if createSub.GetEndpoint() == "" {
+		return nil, errors.New("'Endpoint' is a required field")
+	}
+	endpoint, err := url.Parse(createSub.GetEndpoint())
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := captainhook.CreateSubscription(s.asynqClient, tenantID, appID, createSub.GetName(), createSub.GetTypes(), endpoint)
 	if err != nil {
 		return nil, err
 	}

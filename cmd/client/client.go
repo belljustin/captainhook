@@ -88,5 +88,6 @@ func main() {
 		ApplicationId: appID,
 		Name:          "testSubscription",
 		Types:         []string{"app/payments", "app/withdrawals"},
+		Endpoint:      "localhost:8081",
 	})
 }
