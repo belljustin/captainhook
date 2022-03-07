@@ -47,5 +47,14 @@ func (s *Storage) NewMessage(ctx context.Context, msg *captainhook.Message) (*ca
 }
 
 func (s *Storage) NewSubscription(ctx context.Context, sub *captainhook.Subscription) (*captainhook.Subscription, error) {
-	return nil, nil
+	var retSub captainhook.Subscription
+	stmt, err := s.db.PrepareNamed("INSERT INTO subscriptions (id, tenant_id, application_id, name, endpoint, types, state, create_time, update_time) " +
+		"VALUES (:id, :tenant_id, :application_id, :name, :endpoint, :types, :state, :create_time, :update_time) " +
+		"ON CONFLICT(id) DO UPDATE SET id=EXCLUDED.id " +
+		"RETURNING *")
+	if err != nil {
+		return nil, err
+	}
+	err = stmt.QueryRowx(sub).StructScan(&retSub)
+	return &retSub, err
 }

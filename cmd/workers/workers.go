@@ -20,9 +20,11 @@ func main() {
 	storage := postgres.NewStorage()
 
 	signMessageTaskHandler := captainhook.SignMessageTaskHandler{Storage: storage}
+	createSubscriptionTaskHandler := captainhook.CreateSubscriptionTaskHandler{Storage: storage}
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(captainhook.TypeSignMessage, signMessageTaskHandler.Handle)
+	mux.HandleFunc(captainhook.TypeCreateSubscription, createSubscriptionTaskHandler.Handle)
 
 	if err := srv.Run(mux); err != nil {
 		log.Fatal(err)

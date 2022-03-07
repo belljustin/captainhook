@@ -101,7 +101,7 @@ type CreateSubscriptionTaskHandler struct {
 	Storage Storage
 }
 
-func (h *CreateSubscriptionTaskHandler) HandleCreateSubscription(ctx context.Context, t *asynq.Task) error {
+func (h *CreateSubscriptionTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
 	now := time.Now()
 
 	var p createSubscriptionPayload
@@ -116,9 +116,9 @@ func (h *CreateSubscriptionTaskHandler) HandleCreateSubscription(ctx context.Con
 
 		ApplicationID: p.ApplicationID,
 		Name:          p.Name,
-		Types:         p.Types,
+		Types:         SubscriptionTypes(p.Types),
 		State:         pb.Subscription_PENDING.String(),
-		Endpoint:      p.Endpoint,
+		Endpoint:      p.Endpoint.String(),
 
 		TimeDetails: TimeDetails{
 			CreateTime: now,
@@ -126,6 +126,9 @@ func (h *CreateSubscriptionTaskHandler) HandleCreateSubscription(ctx context.Con
 		},
 	}
 	_, err := h.Storage.NewSubscription(ctx, &sub)
+	if err != nil {
+		log.Printf(" [ERROR] Failed to insert subscription: %v", err)
+	}
 	// TODO: queue subscription confirmation delivery
 	return err
 }

@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"strings"
 )
 
 var (
@@ -101,6 +102,12 @@ func (s *server) CreateSubscription(ctx context.Context, createSub *pb.CreateSub
 	endpoint, err := url.Parse(createSub.GetEndpoint())
 	if err != nil {
 		return nil, err
+	}
+
+	for _, subType := range createSub.GetTypes() {
+		if strings.Contains(subType, ",") {
+			return nil, errors.New("'types' must not contain a ',' character")
+		}
 	}
 
 	id, err := captainhook.CreateSubscription(s.asynqClient, tenantID, appID, createSub.GetName(), createSub.GetTypes(), endpoint)

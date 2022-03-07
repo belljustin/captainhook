@@ -2,8 +2,11 @@ package captainhook
 
 import (
 	"context"
+	"database/sql/driver"
+	"fmt"
 	"github.com/hibiken/asynq"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -91,15 +94,31 @@ func CreateMessage(asynqClient *asynq.Client, tenantID, appID uuid.UUID, msgType
 	return id, nil
 }
 
+type SubscriptionTypes []string
+
+func (p *SubscriptionTypes) Scan(src interface{}) error {
+	stypes := fmt.Sprintf("%v", src)
+	value := SubscriptionTypes(strings.Split(stypes, ","))
+	p = &value
+	return nil
+}
+func (p *SubscriptionTypes) Value() (driver.Value, error) {
+	if len(*p) == 0 {
+		return "", nil
+	}
+	value := strings.Join(*p, ",")
+	return value, nil
+}
+
 type Subscription struct {
 	TenantID uuid.UUID `db:"tenant_id"`
 	ID       uuid.UUID
 
 	ApplicationID uuid.UUID `db:"application_id"`
 	Name          string
-	Types         []string
+	Types         SubscriptionTypes
 	State         string
-	Endpoint      *url.URL
+	Endpoint      string
 
 	TimeDetails
 }
