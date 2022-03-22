@@ -36,6 +36,12 @@ service Captainhook {
       body: "*"
     };
   }
+
+  rpc GetSubscriptions (GetSubscriptionsRequest) returns (SubscriptionCollection) {
+    option (google.api.http) = {
+      get: "/v1/application/{application_id}/subscriptions"
+    };
+  }
 }
 
 // The application creation request message containing the application name
@@ -119,4 +125,17 @@ message Subscription {
   State state = 7;
   google.protobuf.Timestamp create_time = 8;
   google.protobuf.Timestamp update_time = 9;
+}
+
+message GetSubscriptionsRequest {
+  string tenant_id = 1;
+  string application_id = 2;
+  string page = 3;
+  int32 size = 4;
+}
+
+message SubscriptionCollection {
+  repeated Subscription results = 1;
+  string next = 2;
+  string prev = 3;
 }

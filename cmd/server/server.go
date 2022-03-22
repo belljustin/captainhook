@@ -123,6 +123,42 @@ func (s *server) CreateSubscription(ctx context.Context, createSub *pb.CreateSub
 	}, nil
 }
 
+type PaginationOpt struct {
+	token string
+	size  int32
+}
+
+func (opt *PaginationOpt) GetPageToken() string {
+	return opt.token
+}
+
+func (opt *PaginationOpt) GetPageSize() int32 {
+	if opt.size == 0 {
+		return 20
+	}
+	return opt.size
+}
+
+func (s *server) GetSubscriptions(ctx context.Context, getSubs *pb.GetSubscriptionsRequest) (*pb.SubscriptionCollection, error) {
+	tenantID, err := parseTenantIDString(getSubs.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+
+	appID, err := uuid.Parse(getSubs.GetApplicationId())
+	if err != nil {
+		return nil, err
+	}
+
+	pageOpt := &PaginationOpt{getSubs.Page, getSubs.Size}
+
+	subCol, err := captainhook.GetSubscriptions(s.storage, tenantID, appID, pageOpt)
+	if err != nil {
+		return nil, err
+	}
+	return subCol.ToProtobuf(), nil
+}
+
 func parseTenantIDString(sTenantID string) (uuid.UUID, error) {
 	if sTenantID == "" {
 		return defaultTenantID, nil

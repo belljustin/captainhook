@@ -15,6 +15,11 @@ import (
 	pb "github.com/belljustin/captainhook/proto/captainhook"
 )
 
+type PaginationOpt interface {
+	GetPageToken() string
+	GetPageSize() int32
+}
+
 type Storage interface {
 	NewApplication(ctx context.Context, app *Application) (*Application, error)
 	GetApplication(ctx context.Context, tenantID, id uuid.UUID) (*Application, error)
@@ -22,6 +27,7 @@ type Storage interface {
 	NewMessage(ctx context.Context, msg *Message) (*Message, error)
 
 	NewSubscription(ctx context.Context, sub *Subscription) (*Subscription, error)
+	GetSubscriptions(ctx context.Context, tenantID, appID uuid.UUID, pageOpt PaginationOpt) (*SubscriptionCollection, error)
 }
 
 type TimeDetails struct {
@@ -124,7 +130,19 @@ type Subscription struct {
 }
 
 func (s *Subscription) ToProtobuf() *pb.Subscription {
-	return nil
+	return &pb.Subscription{
+		TenantId: s.TenantID.String(),
+		Id:       s.ID.String(),
+
+		ApplicationId: s.ApplicationID.String(),
+		Name:          s.Name,
+		Types:         s.Types,
+		State:         pb.Subscription_State(pb.Subscription_State_value[s.State]),
+		Endpoint:      s.Endpoint,
+
+		CreateTime: timestamppb.New(s.CreateTime),
+		UpdateTime: timestamppb.New(s.UpdateTime),
+	}
 }
 
 func CreateSubscription(asynqClient *asynq.Client, tenantID, appID uuid.UUID, name string, types []string, endpoint *url.URL) (uuid.UUID, error) {
@@ -138,4 +156,27 @@ func CreateSubscription(asynqClient *asynq.Client, tenantID, appID uuid.UUID, na
 		return uuid.UUID{}, err
 	}
 	return id, nil
+}
+
+type SubscriptionCollection struct {
+	Results       []Subscription
+	NextPageToken string
+	PrevPageToken string
+}
+
+func (col *SubscriptionCollection) ToProtobuf() *pb.SubscriptionCollection {
+	results := make([]*pb.Subscription, len(col.Results))
+	for i, sub := range col.Results {
+		results[i] = sub.ToProtobuf()
+	}
+
+	return &pb.SubscriptionCollection{
+		Results: results,
+		Next:    col.NextPageToken,
+		Prev:    col.PrevPageToken,
+	}
+}
+
+func GetSubscriptions(storage Storage, tenantID, appID uuid.UUID, opt PaginationOpt) (*SubscriptionCollection, error) {
+	return storage.GetSubscriptions(context.Background(), tenantID, appID, opt)
 }
