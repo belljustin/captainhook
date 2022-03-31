@@ -103,17 +103,28 @@ func CreateMessage(asynqClient *asynq.Client, tenantID, appID uuid.UUID, msgType
 type SubscriptionTypes []string
 
 func (p *SubscriptionTypes) Scan(src interface{}) error {
+	if src == nil {
+		return nil
+	}
+
 	stypes := fmt.Sprintf("%v", src)
+	stypes = stypes[1 : len(stypes)-1]
+	if len(stypes) == 0 {
+		*p = make([]string, 0)
+		return nil
+	}
+
 	value := SubscriptionTypes(strings.Split(stypes, ","))
-	p = &value
+	*p = value
 	return nil
 }
-func (p *SubscriptionTypes) Value() (driver.Value, error) {
-	if len(*p) == 0 {
-		return "", nil
+
+func (p SubscriptionTypes) Value() (driver.Value, error) {
+	if p == nil || len(p) == 0 {
+		return nil, nil
 	}
-	value := strings.Join(*p, ",")
-	return value, nil
+	value := strings.Join(p, ",")
+	return "{" + value + "}", nil
 }
 
 type Subscription struct {

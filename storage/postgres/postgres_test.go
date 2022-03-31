@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/belljustin/captainhook/internal"
+	pb "github.com/belljustin/captainhook/proto/captainhook"
 	"github.com/stretchr/testify/assert"
 	"path"
 	"runtime"
@@ -71,6 +72,45 @@ func (s *PostgresTestSuite) TestApplication() {
 	assert.Equal(s.T(), app, recvApp)
 }
 
+func (s *PostgresTestSuite) TestSubscription() {
+	tenantID, err := uuid.NewRandom()
+	require.NoError(s.T(), err)
+	appID, err := uuid.NewRandom()
+	require.NoError(s.T(), err)
+
+	n := 4
+	subs := make([]captainhook.Subscription, n)
+	for i := 0; i < n-1; i++ {
+		subs[i], err = randomSub(tenantID, appID, []string{"ch/test", "ch/test2"})
+		require.NoError(s.T(), err)
+
+		_, err := s.storage.NewSubscription(context.Background(), &subs[i])
+		require.NoError(s.T(), err)
+	}
+	subs[n-1], err = randomSub(tenantID, appID, nil)
+	require.NoError(s.T(), err)
+	_, err = s.storage.NewSubscription(context.Background(), &subs[n-1])
+	require.NoError(s.T(), err)
+
+	subCollection, err := s.storage.GetSubscriptions(context.Background(), tenantID, appID, &pgPageOpt{Size: 20})
+	require.NoError(s.T(), err)
+
+	for i := 0; i < n; i++ {
+		assert.Equal(s.T(), subs[i], subCollection.Results[n-1-i])
+	}
+
+	subCollection, err = s.storage.GetSubscriptions(context.Background(), tenantID, appID, &pgPageOpt{Size: 1})
+	require.NoError(s.T(), err)
+	assert.Len(s.T(), subCollection.Results, 1)
+	assert.Equal(s.T(), subs[n-1], subCollection.Results[0])
+
+	nextPageToken := pgPageTokenString(subCollection.NextPageToken, 1)
+	subCollection, err = s.storage.GetSubscriptions(context.Background(), tenantID, appID, &nextPageToken)
+	require.NoError(s.T(), err)
+	assert.Len(s.T(), subCollection.Results, 1)
+	assert.Equal(s.T(), subs[n-2], subCollection.Results[0])
+}
+
 func (s *PostgresTestSuite) TearDownSuite() {
 	require.NoError(s.T(), s.m.Down())
 }
@@ -81,4 +121,27 @@ func TestPostgresTestSuite(t *testing.T) {
 	}
 
 	suite.Run(t, new(PostgresTestSuite))
+}
+
+func randomSub(tenantID, appID uuid.UUID, types []string) (captainhook.Subscription, error) {
+	subID, err := uuid.NewRandom()
+	if err != nil {
+		return captainhook.Subscription{}, err
+	}
+	now := time.Now().UTC()
+
+	return captainhook.Subscription{
+		TenantID: tenantID,
+		ID:       subID,
+
+		ApplicationID: appID,
+		Name:          internal.RandString(16),
+		Types:         types,
+		State:         pb.Subscription_PENDING.String(),
+		Endpoint:      internal.RandString(16),
+		TimeDetails: captainhook.TimeDetails{
+			CreateTime: now,
+			UpdateTime: now,
+		},
+	}, nil
 }

@@ -63,13 +63,13 @@ func (s *Storage) NewSubscription(ctx context.Context, sub *captainhook.Subscrip
 	return &retSub, err
 }
 
-const pgPageTokenTimeFormat = time.RFC3339
+const pgPageTokenTimeFormat = time.RFC3339Nano
 
-type pgPageToken struct {
+type pgPageOpt struct {
 	ID            uuid.UUID
 	CreatedAfter  time.Time
 	CreatedBefore time.Time
-	Size          int
+	Size          int32
 }
 
 const (
@@ -78,7 +78,7 @@ const (
 	pgPageTokenCreatedBeforeKey = "lte"
 )
 
-func (t *pgPageToken) String() string {
+func (t *pgPageOpt) GetPageToken() string {
 	if t == nil || t.ID == uuid.Nil {
 		return ""
 	}
@@ -94,12 +94,12 @@ func (t *pgPageToken) String() string {
 	return ""
 }
 
-func (t *pgPageToken) GetPageSize() int {
+func (t *pgPageOpt) GetPageSize() int32 {
 	return t.Size
 }
 
-func pgPageTokenString(pageToken string) pgPageToken {
-	ret := pgPageToken{}
+func pgPageTokenString(pageToken string, pageSize int32) pgPageOpt {
+	ret := pgPageOpt{Size: pageSize}
 	tokens := strings.Split(pageToken, ";")
 	for _, token := range tokens {
 		splitToken := strings.Split(token, "=")
@@ -138,12 +138,12 @@ func newPrevPageToken(subscriptions []captainhook.Subscription) string {
 		return ""
 	}
 	firstSub := subscriptions[0]
-	t := &pgPageToken{
-		ID:            firstSub.ID,
-		CreatedBefore: firstSub.CreateTime,
+	t := &pgPageOpt{
+		ID:           firstSub.ID,
+		CreatedAfter: firstSub.CreateTime,
 	}
 
-	return t.String()
+	return t.GetPageToken()
 }
 
 func newNextPageToken(subscriptions []captainhook.Subscription) string {
@@ -151,16 +151,15 @@ func newNextPageToken(subscriptions []captainhook.Subscription) string {
 		return ""
 	}
 	lastSub := subscriptions[len(subscriptions)-1]
-	t := &pgPageToken{
-		ID:           lastSub.ID,
-		CreatedAfter: lastSub.CreateTime,
+	t := &pgPageOpt{
+		ID:            lastSub.ID,
+		CreatedBefore: lastSub.CreateTime,
 	}
-
-	return t.String()
+	return t.GetPageToken()
 }
 
 func (s *Storage) GetSubscriptions(ctx context.Context, tenantID, applicationID uuid.UUID, pageOpt captainhook.PaginationOpt) (*captainhook.SubscriptionCollection, error) {
-	pageToken := pgPageTokenString(pageOpt.GetPageToken())
+	pageToken := pgPageTokenString(pageOpt.GetPageToken(), pageOpt.GetPageSize())
 	var err error
 	var subscriptions []captainhook.Subscription
 	if !pageToken.CreatedAfter.IsZero() {
@@ -180,7 +179,7 @@ func (s *Storage) GetSubscriptions(ctx context.Context, tenantID, applicationID 
 	}, nil
 }
 
-func (s *Storage) getNextSubscriptions(ctx context.Context, tenantID, applicationID uuid.UUID, pageToken pgPageToken, pageSize int32) ([]captainhook.Subscription, error) {
+func (s *Storage) getNextSubscriptions(ctx context.Context, tenantID, applicationID uuid.UUID, pageToken pgPageOpt, pageSize int32) ([]captainhook.Subscription, error) {
 	createdBefore := pageToken.CreatedBefore
 	if createdBefore.IsZero() {
 		createdBefore = time.Now()
@@ -188,7 +187,7 @@ func (s *Storage) getNextSubscriptions(ctx context.Context, tenantID, applicatio
 
 	var subscriptions []captainhook.Subscription
 	err := s.db.Select(&subscriptions, "SELECT * FROM subscriptions WHERE tenant_id = $1 AND application_id = $2 "+
-		"AND create_time <= $3 AND id > $4 "+
+		"AND (create_time, id) < ($3, $4) "+
 		"ORDER BY create_time DESC, id DESC "+
 		"LIMIT $5",
 		tenantID,
@@ -200,11 +199,11 @@ func (s *Storage) getNextSubscriptions(ctx context.Context, tenantID, applicatio
 	return subscriptions, err
 }
 
-func (s *Storage) getPrevSubscriptions(ctx context.Context, tenantID, applicationID uuid.UUID, pageToken pgPageToken, pageSize int32) ([]captainhook.Subscription, error) {
+func (s *Storage) getPrevSubscriptions(ctx context.Context, tenantID, applicationID uuid.UUID, pageToken pgPageOpt, pageSize int32) ([]captainhook.Subscription, error) {
 	var subscriptions []captainhook.Subscription
 	err := s.db.Select(&subscriptions, "SELECT * FROM subscriptions "+
 		"WHERE tenant_id = $1 AND application_id = $2 "+
-		"AND create_time >= $3 AND id < $4 "+
+		"AND (create_time, id) > ($3, $4) "+
 		"ORDER BY create_time DESC, id DESC "+
 		"LIMIT $5",
 		tenantID,
