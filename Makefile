@@ -8,6 +8,7 @@ proto:
 		./proto/captainhook/captainhook.proto
 
 openapi:
+	mkdir -p ./gen/openapiv2
 	protoc -I ./proto \
 		--openapiv2_out ./gen/openapiv2 \
 		--openapiv2_opt logtostderr=true \

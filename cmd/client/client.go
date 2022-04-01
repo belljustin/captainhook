@@ -57,9 +57,21 @@ func createSubscription(client pb.CaptainhookClient, createSub *pb.CreateSubscri
 	if err != nil {
 		log.Fatalf("%v.CreateSubscription(_) = _, %v: ", client, err)
 	}
-	log.Println(sub)
+	log.Println("SubscriptionReceipt", sub)
 
 	return sub.Id
+}
+
+func getSubscriptions(client pb.CaptainhookClient, getSubs *pb.GetSubscriptionsRequest) (string, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	subCollection, err := client.GetSubscriptions(ctx, getSubs)
+	if err != nil {
+		log.Fatalf("%v.GetSubscriptions(_) = _, %v: ", client, err)
+	}
+	log.Println("Subscriptions", subCollection)
+
+	return subCollection.GetPrev(), subCollection.GetNext()
 }
 
 func main() {
@@ -86,8 +98,29 @@ func main() {
 
 	createSubscription(client, &pb.CreateSubscriptionRequest{
 		ApplicationId: appID,
-		Name:          "testSubscription",
+		Name:          "sub1",
 		Types:         []string{"app/payments", "app/withdrawals"},
 		Endpoint:      "localhost:8081",
+	})
+	createSubscription(client, &pb.CreateSubscriptionRequest{
+		ApplicationId: appID,
+		Name:          "sub2",
+		Types:         []string{"app/payments", "app/withdrawals"},
+		Endpoint:      "localhost:8081",
+	})
+
+	_, nextPageToken := getSubscriptions(client, &pb.GetSubscriptionsRequest{
+		ApplicationId: "70fbd1c5-dee8-4fa5-96da-df43485faa59",
+		Size:          1,
+	})
+	prevPageToken, _ := getSubscriptions(client, &pb.GetSubscriptionsRequest{
+		ApplicationId: "70fbd1c5-dee8-4fa5-96da-df43485faa59",
+		Size:          1,
+		Page:          nextPageToken,
+	})
+	getSubscriptions(client, &pb.GetSubscriptionsRequest{
+		ApplicationId: "70fbd1c5-dee8-4fa5-96da-df43485faa59",
+		Size:          1,
+		Page:          prevPageToken,
 	})
 }
