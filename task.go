@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	TypeSignMessage = "message:sign"
+	TypeSignMessage   = "message:sign"
+	TypeFanoutMessage = "message:fanout"
 
 	TypeCreateSubscription = "subscription:create"
 )
@@ -43,7 +44,8 @@ func NewSignMessageTask(id, tenantID, appID uuid.UUID, msgType string, data []by
 }
 
 type SignMessageTaskHandler struct {
-	Storage Storage
+	Storage     Storage
+	AsynqClient *asynq.Client
 }
 
 func (h *SignMessageTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
@@ -71,6 +73,19 @@ func (h *SignMessageTaskHandler) Handle(ctx context.Context, t *asynq.Task) erro
 		},
 	}
 	_, err := h.Storage.NewMessage(ctx, &msg)
+	if err != nil {
+		return err
+	}
+
+	fanoutTask, err := NewFanoutTask(msg)
+	if err != nil {
+		return err
+	}
+
+	_, err = h.AsynqClient.EnqueueContext(ctx, fanoutTask)
+	if err != nil {
+		log.Printf(" [ERROR] could not enqueue message for fanout: %v", err)
+	}
 	return err
 }
 
@@ -133,4 +148,52 @@ func (h *CreateSubscriptionTaskHandler) Handle(ctx context.Context, t *asynq.Tas
 	}
 	// TODO: queue subscription confirmation delivery
 	return err
+}
+
+type fanoutPayload struct {
+	Message Message
+}
+
+func NewFanoutTask(message Message) (*asynq.Task, error) {
+	payload, err := json.Marshal(fanoutPayload{Message: message})
+	if err != nil {
+		return nil, err
+	}
+	return asynq.NewTask(TypeFanoutMessage, payload), nil
+}
+
+type FanoutTaskHandler struct {
+	Storage Storage
+}
+
+func (h *FanoutTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
+	var p fanoutPayload
+	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		return err
+	}
+	msg := p.Message
+	log.Printf(" [*] Fanout message %s", p.Message.ID)
+
+	subCollection, err := h.Storage.GetSubscriptions(ctx, msg.TenantID, msg.ApplicationID, nil)
+	if err != nil {
+		log.Printf(" [ERROR] Failed to get subscriptions: %v", err)
+		return err
+	}
+
+	for subCollection.Results != nil && len(subCollection.Results) > 0 {
+		for _, sub := range subCollection.Results {
+			// TODO: enqueue message
+			log.Printf(" [*] Enqueuing message for subscription %s", sub.ID)
+		}
+
+		pageOpt := &Pagination{Token: subCollection.NextPageToken}
+		subCollection, err = h.Storage.GetSubscriptions(ctx, msg.TenantID, msg.ApplicationID, pageOpt)
+		if err != nil {
+			log.Printf(" [ERROR] Failed to get subscriptions: %v", err)
+			return err
+		}
+	}
+
+	log.Printf(" [*] Completed fanout of message %s", p.Message.ID)
+	return nil
 }

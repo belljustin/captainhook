@@ -20,13 +20,16 @@ func main() {
 		asynq.Config{Concurrency: 10},
 	)
 	storage := postgres.NewStorage()
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: *redisAddr})
 
-	signMessageTaskHandler := captainhook.SignMessageTaskHandler{Storage: storage}
+	signMessageTaskHandler := captainhook.SignMessageTaskHandler{Storage: storage, AsynqClient: asynqClient}
 	createSubscriptionTaskHandler := captainhook.CreateSubscriptionTaskHandler{Storage: storage}
+	fanoutTaskHandler := captainhook.FanoutTaskHandler{Storage: storage}
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(captainhook.TypeSignMessage, signMessageTaskHandler.Handle)
 	mux.HandleFunc(captainhook.TypeCreateSubscription, createSubscriptionTaskHandler.Handle)
+	mux.HandleFunc(captainhook.TypeFanoutMessage, fanoutTaskHandler.Handle)
 
 	if err := srv.Run(mux); err != nil {
 		log.Fatal(err)

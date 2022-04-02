@@ -20,6 +20,19 @@ type PaginationOpt interface {
 	GetPageSize() int32
 }
 
+type Pagination struct {
+	Token string
+	Size  int32
+}
+
+func (p *Pagination) GetPageToken() string {
+	return p.Token
+}
+
+func (p *Pagination) GetPageSize() int32 {
+	return p.Size
+}
+
 type Storage interface {
 	NewApplication(ctx context.Context, app *Application) (*Application, error)
 	GetApplication(ctx context.Context, tenantID, id uuid.UUID) (*Application, error)

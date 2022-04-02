@@ -1,8 +1,7 @@
-package main
+package client
 
 import (
 	"context"
-	"flag"
 	"log"
 	"time"
 
@@ -12,11 +11,7 @@ import (
 	pb "github.com/belljustin/captainhook/proto/captainhook"
 )
 
-var (
-	serverAddr = flag.String("addr", "localhost:50051", "The server address in the format of host:port")
-)
-
-func createApplication(client pb.CaptainhookClient, createApp *pb.CreateApplicationRequest) string {
+func CreateApplication(client pb.CaptainhookClient, createApp *pb.CreateApplicationRequest) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	app, err := client.CreateApplication(ctx, createApp)
@@ -28,7 +23,7 @@ func createApplication(client pb.CaptainhookClient, createApp *pb.CreateApplicat
 	return app.Id
 }
 
-func getApplication(client pb.CaptainhookClient, getApp *pb.GetApplicationRequest) {
+func GetApplication(client pb.CaptainhookClient, getApp *pb.GetApplicationRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	app, err := client.GetApplication(ctx, getApp)
@@ -38,7 +33,7 @@ func getApplication(client pb.CaptainhookClient, getApp *pb.GetApplicationReques
 	log.Println(app)
 }
 
-func createMessage(client pb.CaptainhookClient, createMsg *pb.CreateMessageRequest) string {
+func CreateMessage(client pb.CaptainhookClient, createMsg *pb.CreateMessageRequest) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	msg, err := client.CreateMessage(ctx, createMsg)
@@ -50,7 +45,7 @@ func createMessage(client pb.CaptainhookClient, createMsg *pb.CreateMessageReque
 	return msg.Id
 }
 
-func createSubscription(client pb.CaptainhookClient, createSub *pb.CreateSubscriptionRequest) string {
+func CreateSubscription(client pb.CaptainhookClient, createSub *pb.CreateSubscriptionRequest) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	sub, err := client.CreateSubscription(ctx, createSub)
@@ -62,7 +57,7 @@ func createSubscription(client pb.CaptainhookClient, createSub *pb.CreateSubscri
 	return sub.Id
 }
 
-func getSubscriptions(client pb.CaptainhookClient, getSubs *pb.GetSubscriptionsRequest) (string, string) {
+func GetSubscriptions(client pb.CaptainhookClient, getSubs *pb.GetSubscriptionsRequest) (string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	subCollection, err := client.GetSubscriptions(ctx, getSubs)
@@ -74,21 +69,24 @@ func getSubscriptions(client pb.CaptainhookClient, getSubs *pb.GetSubscriptionsR
 	return subCollection.GetPrev(), subCollection.GetNext()
 }
 
-func main() {
-	flag.Parse()
-
+func New(serverAddr string) pb.CaptainhookClient {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, err := grpc.Dial(*serverAddr, opts...)
+	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Fatalf("fail to dial: %v", err)
 	}
-	defer conn.Close()
-	client := pb.NewCaptainhookClient(conn)
+	return pb.NewCaptainhookClient(conn)
+}
 
-	appID := createApplication(client, &pb.CreateApplicationRequest{Name: "app_name"})
+/*
+func main() {
+	flag.Parse()
+
+	appID := CreateApplication(client, &pb.CreateApplicationRequest{Name: "app_name"})
 	getApplication(client, &pb.GetApplicationRequest{Id: appID})
+
 
 	createMessage(client, &pb.CreateMessageRequest{
 		ApplicationId: appID,
@@ -124,3 +122,4 @@ func main() {
 		Page:          prevPageToken,
 	})
 }
+*/

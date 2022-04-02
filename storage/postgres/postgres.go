@@ -159,13 +159,19 @@ func newNextPageToken(subscriptions []captainhook.Subscription) string {
 }
 
 func (s *Storage) GetSubscriptions(ctx context.Context, tenantID, applicationID uuid.UUID, pageOpt captainhook.PaginationOpt) (*captainhook.SubscriptionCollection, error) {
-	pageToken := pgPageTokenString(pageOpt.GetPageToken(), pageOpt.GetPageSize())
+	var pageToken pgPageOpt
+	if pageOpt != nil {
+		pageToken = pgPageTokenString(pageOpt.GetPageToken(), pageOpt.GetPageSize())
+	} else {
+		pageToken = pgPageOpt{Size: 20}
+	}
+
 	var err error
 	var subscriptions []captainhook.Subscription
 	if !pageToken.CreatedAfter.IsZero() {
-		subscriptions, err = s.getPrevSubscriptions(ctx, tenantID, applicationID, pageToken, pageOpt.GetPageSize())
+		subscriptions, err = s.getPrevSubscriptions(ctx, tenantID, applicationID, pageToken, pageToken.GetPageSize())
 	} else {
-		subscriptions, err = s.getNextSubscriptions(ctx, tenantID, applicationID, pageToken, pageOpt.GetPageSize())
+		subscriptions, err = s.getNextSubscriptions(ctx, tenantID, applicationID, pageToken, pageToken.GetPageSize())
 	}
 
 	if err != nil {
