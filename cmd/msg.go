@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"errors"
-	"github.com/belljustin/captainhook/cmd/client"
+	"github.com/belljustin/captainhook/internal/client"
 	pb "github.com/belljustin/captainhook/proto/captainhook"
 	"github.com/spf13/cobra"
 )

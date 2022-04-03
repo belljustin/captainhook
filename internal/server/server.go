@@ -1,39 +1,61 @@
-package main
+package server
 
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
-	"github.com/belljustin/captainhook/captainhook"
 	"log"
 	"net"
 	"net/url"
 	"strings"
 
-	"github.com/belljustin/captainhook/storage/postgres"
+	pb "github.com/belljustin/captainhook/proto/captainhook"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"google.golang.org/grpc"
 
-	pb "github.com/belljustin/captainhook/proto/captainhook"
+	"github.com/belljustin/captainhook/captainhook"
+	"github.com/belljustin/captainhook/storage/postgres"
 )
 
 var (
-	port      = flag.Int("port", 50051, "The server port")
-	redisAddr = flag.String("redisAddr", "localhost:6379", "The redis address")
-
 	defaultTenantID, _ = uuid.FromBytes([]byte("default"))
 )
 
-type server struct {
+type Server struct {
 	pb.UnimplementedCaptainhookServer
 
 	storage     captainhook.Storage
 	asynqClient *asynq.Client
+
+	port int
 }
 
-func (s *server) CreateApplication(ctx context.Context, createApp *pb.CreateApplicationRequest) (*pb.Application, error) {
+func New(port int, redisAddr string) *Server {
+	storage := postgres.NewStorage()
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
+
+	return &Server{
+		storage:     storage,
+		asynqClient: asynqClient,
+
+		port: port,
+	}
+}
+
+func (s *Server) Run() error {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	pb.RegisterCaptainhookServer(grpcServer, s)
+	log.Printf("server listening at %v", lis.Addr())
+
+	return grpcServer.Serve(lis)
+}
+
+func (s *Server) CreateApplication(ctx context.Context, createApp *pb.CreateApplicationRequest) (*pb.Application, error) {
 	tenantID, err := parseTenantIDString(createApp.GetTenantId())
 	if err != nil {
 		return nil, err
@@ -46,7 +68,7 @@ func (s *server) CreateApplication(ctx context.Context, createApp *pb.CreateAppl
 	return application.ToProtobuf(), nil
 }
 
-func (s *server) GetApplication(ctx context.Context, getApp *pb.GetApplicationRequest) (*pb.Application, error) {
+func (s *Server) GetApplication(ctx context.Context, getApp *pb.GetApplicationRequest) (*pb.Application, error) {
 	sID := getApp.GetId()
 	id, err := uuid.Parse(sID)
 	if err != nil {
@@ -65,7 +87,7 @@ func (s *server) GetApplication(ctx context.Context, getApp *pb.GetApplicationRe
 	return app.ToProtobuf(), nil
 }
 
-func (s *server) CreateMessage(ctx context.Context, createMsg *pb.CreateMessageRequest) (*pb.MessageReceipt, error) {
+func (s *Server) CreateMessage(ctx context.Context, createMsg *pb.CreateMessageRequest) (*pb.MessageReceipt, error) {
 	tenantID, err := parseTenantIDString(createMsg.GetTenantId())
 	if err != nil {
 		return nil, err
@@ -87,7 +109,7 @@ func (s *server) CreateMessage(ctx context.Context, createMsg *pb.CreateMessageR
 	}, nil
 }
 
-func (s *server) CreateSubscription(ctx context.Context, createSub *pb.CreateSubscriptionRequest) (*pb.SubscriptionReceipt, error) {
+func (s *Server) CreateSubscription(ctx context.Context, createSub *pb.CreateSubscriptionRequest) (*pb.SubscriptionReceipt, error) {
 	tenantID, err := parseTenantIDString(createSub.GetTenantId())
 	if err != nil {
 		return nil, err
@@ -139,7 +161,7 @@ func (opt *PaginationOpt) GetPageSize() int32 {
 	return opt.size
 }
 
-func (s *server) GetSubscriptions(ctx context.Context, getSubs *pb.GetSubscriptionsRequest) (*pb.SubscriptionCollection, error) {
+func (s *Server) GetSubscriptions(ctx context.Context, getSubs *pb.GetSubscriptionsRequest) (*pb.SubscriptionCollection, error) {
 	tenantID, err := parseTenantIDString(getSubs.GetTenantId())
 	if err != nil {
 		return nil, err
@@ -164,22 +186,5 @@ func parseTenantIDString(sTenantID string) (uuid.UUID, error) {
 		return defaultTenantID, nil
 	} else {
 		return uuid.Parse(sTenantID)
-	}
-}
-
-func main() {
-	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	storage := postgres.NewStorage()
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: *redisAddr})
-	pb.RegisterCaptainhookServer(s, &server{storage: storage, asynqClient: asynqClient})
-	log.Printf("server listening at %v", lis.Addr())
-
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
 	}
 }

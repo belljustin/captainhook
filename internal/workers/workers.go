@@ -1,26 +1,29 @@
-package main
+package workers
 
 import (
-	"flag"
 	"github.com/belljustin/captainhook/captainhook"
-	"log"
-
-	"github.com/hibiken/asynq"
-
 	"github.com/belljustin/captainhook/storage/postgres"
+	"github.com/hibiken/asynq"
 )
 
-var (
-	redisAddr = flag.String("redisAddr", "localhost:6379", "The redis address")
-)
+type Workers struct {
+	redisAddr string
 
-func main() {
+	asynqClient asynq.Client
+	storage     captainhook.Storage
+}
+
+func New(redisAddr string) *Workers {
+	return &Workers{redisAddr: redisAddr}
+}
+
+func (w Workers) Run() error {
 	srv := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: *redisAddr},
+		asynq.RedisClientOpt{Addr: w.redisAddr},
 		asynq.Config{Concurrency: 10},
 	)
 	storage := postgres.NewStorage()
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: *redisAddr})
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: w.redisAddr})
 	defer asynqClient.Close()
 
 	signMessageTaskHandler := captainhook.SignMessageTaskHandler{Storage: storage, AsynqClient: asynqClient}
@@ -34,7 +37,5 @@ func main() {
 	mux.HandleFunc(captainhook.TypeFanoutMessage, fanoutTaskHandler.Handle)
 	mux.HandleFunc(captainhook.TypeDeliveryMessage, deliveryTaskHandler.Handle)
 
-	if err := srv.Run(mux); err != nil {
-		log.Fatal(err)
-	}
+	return srv.Run(mux)
 }
