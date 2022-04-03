@@ -24,11 +24,12 @@ func (w Workers) Run() error {
 	)
 	storage := postgres.NewStorage()
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: w.redisAddr})
+	deliverer := captainhook.NewHttpDeliverer()
 	defer asynqClient.Close()
 
 	createSubscriptionTaskHandler := captainhook.CreateSubscriptionTaskHandler{Storage: storage}
 	fanoutTaskHandler := captainhook.FanoutTaskHandler{Storage: storage, AsynqClient: asynqClient}
-	deliveryTaskHandler := captainhook.DeliveryTaskHandler{}
+	deliveryTaskHandler := captainhook.DeliveryTaskHandler{Deliverer: deliverer}
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(captainhook.TypeCreateSubscription, createSubscriptionTaskHandler.Handle)

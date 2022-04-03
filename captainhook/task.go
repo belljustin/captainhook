@@ -157,7 +157,9 @@ func NewDeliveryTask(m Message, endpoint string) (*asynq.Task, error) {
 	return asynq.NewTask(TypeDeliveryMessage, payload), nil
 }
 
-type DeliveryTaskHandler struct{}
+type DeliveryTaskHandler struct {
+	Deliverer Deliverer
+}
 
 func (h *DeliveryTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
 	var p deliveryPayload
@@ -167,7 +169,13 @@ func (h *DeliveryTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
 	msg := p.Message
 	endpoint := p.Endpoint
 
-	log.Printf(" [*] Delivering message %s to %s", msg.ID, endpoint)
+	// TODO mark message as success
+	err := h.Deliverer.Deliver(msg, endpoint)
+	if err != nil {
+		log.Printf(" [TRACE] Failed to deliver message: %v", err)
+		return err
+	}
+	log.Printf(" [*] Delivered message %s to %s", msg.ID, endpoint)
 
 	return nil
 }
