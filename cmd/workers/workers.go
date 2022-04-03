@@ -24,12 +24,14 @@ func main() {
 
 	signMessageTaskHandler := captainhook.SignMessageTaskHandler{Storage: storage, AsynqClient: asynqClient}
 	createSubscriptionTaskHandler := captainhook.CreateSubscriptionTaskHandler{Storage: storage}
-	fanoutTaskHandler := captainhook.FanoutTaskHandler{Storage: storage}
+	fanoutTaskHandler := captainhook.FanoutTaskHandler{Storage: storage, AsynqClient: asynqClient}
+	deliveryTaskHandler := captainhook.DeliveryTaskHandler{}
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(captainhook.TypeSignMessage, signMessageTaskHandler.Handle)
 	mux.HandleFunc(captainhook.TypeCreateSubscription, createSubscriptionTaskHandler.Handle)
 	mux.HandleFunc(captainhook.TypeFanoutMessage, fanoutTaskHandler.Handle)
+	mux.HandleFunc(captainhook.TypeDeliveryMessage, deliveryTaskHandler.Handle)
 
 	if err := srv.Run(mux); err != nil {
 		log.Fatal(err)

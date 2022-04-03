@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	TypeSignMessage   = "message:sign"
-	TypeFanoutMessage = "message:fanout"
+	TypeSignMessage     = "message:sign"
+	TypeFanoutMessage   = "message:fanout"
+	TypeDeliveryMessage = "message:delivery"
 
 	TypeCreateSubscription = "subscription:create"
 )
@@ -163,7 +164,8 @@ func NewFanoutTask(message Message) (*asynq.Task, error) {
 }
 
 type FanoutTaskHandler struct {
-	Storage Storage
+	Storage     Storage
+	AsynqClient *asynq.Client
 }
 
 func (h *FanoutTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
@@ -182,8 +184,16 @@ func (h *FanoutTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
 
 	for subCollection.Results != nil && len(subCollection.Results) > 0 {
 		for _, sub := range subCollection.Results {
-			// TODO: enqueue message
 			log.Printf(" [*] Enqueuing message for subscription %s", sub.ID)
+			deliveryTask, err := NewDeliveryTask(msg, sub.Endpoint)
+			if err != nil {
+				return err
+			}
+
+			_, err = h.AsynqClient.EnqueueContext(ctx, deliveryTask)
+			if err != nil {
+				return err
+			}
 		}
 
 		pageOpt := &Pagination{Token: subCollection.NextPageToken}
@@ -195,5 +205,33 @@ func (h *FanoutTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
 	}
 
 	log.Printf(" [*] Completed fanout of message %s", p.Message.ID)
+	return nil
+}
+
+type deliveryPayload struct {
+	Message  Message
+	Endpoint string
+}
+
+func NewDeliveryTask(m Message, endpoint string) (*asynq.Task, error) {
+	payload, err := json.Marshal(deliveryPayload{Message: m, Endpoint: endpoint})
+	if err != nil {
+		return nil, err
+	}
+	return asynq.NewTask(TypeDeliveryMessage, payload), nil
+}
+
+type DeliveryTaskHandler struct{}
+
+func (h *DeliveryTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
+	var p deliveryPayload
+	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		return err
+	}
+	msg := p.Message
+	endpoint := p.Endpoint
+
+	log.Printf(" [*] Delivering message %s to %s", msg.ID, endpoint)
+
 	return nil
 }
