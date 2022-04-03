@@ -95,14 +95,30 @@ type Message struct {
 	Type          string
 	Data          []byte
 	State         string
-	Signature     []byte
 
 	TimeDetails
 }
 
 func CreateMessage(asynqClient *asynq.Client, tenantID, appID uuid.UUID, msgType string, data []byte) (uuid.UUID, error) {
 	id, _ := uuid.NewRandom()
-	t1, err := NewSignMessageTask(id, tenantID, appID, msgType, data)
+	now := time.Now()
+
+	msg := Message{
+		TenantID: tenantID,
+		ID:       id,
+
+		ApplicationID: appID,
+		Type:          msgType,
+		Data:          data,
+		State:         pb.Message_PENDING.String(),
+
+		TimeDetails: TimeDetails{
+			CreateTime: now,
+			UpdateTime: now,
+		},
+	}
+
+	t1, err := NewFanoutTask(msg)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

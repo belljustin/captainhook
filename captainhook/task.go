@@ -14,81 +14,11 @@ import (
 )
 
 const (
-	TypeSignMessage     = "message:sign"
 	TypeFanoutMessage   = "message:fanout"
 	TypeDeliveryMessage = "message:delivery"
 
 	TypeCreateSubscription = "subscription:create"
 )
-
-type signMessagePayload struct {
-	TenantID      uuid.UUID
-	ID            uuid.UUID
-	ApplicationID uuid.UUID
-	Type          string
-	Data          []byte
-}
-
-func NewSignMessageTask(id, tenantID, appID uuid.UUID, msgType string, data []byte) (*asynq.Task, error) {
-	payload, err := json.Marshal(signMessagePayload{
-		TenantID:      tenantID,
-		ID:            id,
-		ApplicationID: appID,
-		Type:          msgType,
-		Data:          data,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return asynq.NewTask(TypeSignMessage, payload), nil
-}
-
-type SignMessageTaskHandler struct {
-	Storage     Storage
-	AsynqClient *asynq.Client
-}
-
-func (h *SignMessageTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
-	now := time.Now()
-
-	var p signMessagePayload
-	if err := json.Unmarshal(t.Payload(), &p); err != nil {
-		return err
-	}
-	log.Printf(" [*] Sign Message %q", p.Data)
-
-	msg := Message{
-		TenantID: p.TenantID,
-		ID:       p.ID,
-
-		ApplicationID: p.ApplicationID,
-		Type:          p.Type,
-		Data:          p.Data,
-		State:         pb.Message_PENDING.String(),
-		Signature:     []byte{},
-
-		TimeDetails: TimeDetails{
-			CreateTime: now,
-			UpdateTime: now,
-		},
-	}
-	_, err := h.Storage.NewMessage(ctx, &msg)
-	if err != nil {
-		return err
-	}
-
-	fanoutTask, err := NewFanoutTask(msg)
-	if err != nil {
-		return err
-	}
-
-	_, err = h.AsynqClient.EnqueueContext(ctx, fanoutTask)
-	if err != nil {
-		log.Printf(" [ERROR] could not enqueue message for fanout: %v", err)
-	}
-	return err
-}
 
 type createSubscriptionPayload struct {
 	TenantID      uuid.UUID
@@ -175,6 +105,12 @@ func (h *FanoutTaskHandler) Handle(ctx context.Context, t *asynq.Task) error {
 	}
 	msg := p.Message
 	log.Printf(" [*] Fanout message %s", p.Message.ID)
+
+	_, err := h.Storage.NewMessage(context.Background(), &msg)
+	if err != nil {
+		log.Printf(" [ERROR] could not create a new message: %v", err)
+		return err
+	}
 
 	subCollection, err := h.Storage.GetSubscriptions(ctx, msg.TenantID, msg.ApplicationID, nil)
 	if err != nil {

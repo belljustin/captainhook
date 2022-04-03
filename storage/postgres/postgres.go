@@ -43,8 +43,8 @@ func (s *Storage) GetApplication(ctx context.Context, tenantID, id uuid.UUID) (*
 }
 
 func (s *Storage) NewMessage(ctx context.Context, msg *captainhook.Message) (*captainhook.Message, error) {
-	_, err := s.db.NamedExec("INSERT INTO messages (id, tenant_id, application_id, type, data, state, signature, create_time, update_time) "+
-		"VALUES (:id, :tenant_id, :application_id, :type, :data, :state, :signature, :create_time, :update_time) "+
+	_, err := s.db.NamedExec("INSERT INTO messages (id, tenant_id, application_id, type, data, state, create_time, update_time) "+
+		"VALUES (:id, :tenant_id, :application_id, :type, :data, :state, :create_time, :update_time) "+
 		"ON CONFLICT DO NOTHING", msg)
 	return msg, err
 }

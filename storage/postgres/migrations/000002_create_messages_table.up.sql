@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS messages(
     type            TEXT    NOT NULL,
     data            BYTEA   NOT NULL,
     state           TEXT    NOT NULL,
-    signature       TEXT    NOT NULL,
 
     create_time timestamp NOT NULL,
     update_time timestamp NOT NULL
