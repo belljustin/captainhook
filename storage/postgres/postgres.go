@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/belljustin/captainhook/captainhook"
 	"log"
 	"strings"
 	"time"
@@ -12,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
+
+	"github.com/belljustin/captainhook/captainhook"
 )
 
 var (

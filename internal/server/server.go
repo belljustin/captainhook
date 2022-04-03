@@ -9,12 +9,12 @@ import (
 	"net/url"
 	"strings"
 
-	pb "github.com/belljustin/captainhook/proto/captainhook"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"google.golang.org/grpc"
 
 	"github.com/belljustin/captainhook/captainhook"
+	pb "github.com/belljustin/captainhook/proto/captainhook"
 	"github.com/belljustin/captainhook/storage/postgres"
 )
 

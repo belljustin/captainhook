@@ -1,9 +1,10 @@
 package workers
 
 import (
+	"github.com/hibiken/asynq"
+
 	"github.com/belljustin/captainhook/captainhook"
 	"github.com/belljustin/captainhook/storage/postgres"
-	"github.com/hibiken/asynq"
 )
 
 type Workers struct {

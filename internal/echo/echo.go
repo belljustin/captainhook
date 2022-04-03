@@ -3,8 +3,9 @@ package echo
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/belljustin/captainhook/captainhook"
 	"net/http"
+
+	"github.com/belljustin/captainhook/captainhook"
 )
 
 type EchoServer struct {

@@ -3,10 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"github.com/belljustin/captainhook/captainhook"
-	"github.com/belljustin/captainhook/internal"
-	pb "github.com/belljustin/captainhook/proto/captainhook"
-	"github.com/stretchr/testify/assert"
 	"path"
 	"runtime"
 	"testing"
@@ -16,8 +12,13 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/pgx"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/belljustin/captainhook/captainhook"
+	"github.com/belljustin/captainhook/internal"
+	pb "github.com/belljustin/captainhook/proto/captainhook"
 )
 
 const databaseTestName = "postgres"
