@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"github.com/belljustin/captainhook/captainhook"
 	"github.com/belljustin/captainhook/internal"
 	pb "github.com/belljustin/captainhook/proto/captainhook"
 	"github.com/stretchr/testify/assert"
@@ -17,8 +18,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/belljustin/captainhook"
 )
 
 const databaseTestName = "postgres"

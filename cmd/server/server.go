@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/belljustin/captainhook/captainhook"
 	"log"
 	"net"
 	"net/url"
@@ -15,7 +16,6 @@ import (
 	"github.com/hibiken/asynq"
 	"google.golang.org/grpc"
 
-	"github.com/belljustin/captainhook"
 	pb "github.com/belljustin/captainhook/proto/captainhook"
 )
 

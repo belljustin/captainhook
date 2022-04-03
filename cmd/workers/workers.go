@@ -2,11 +2,11 @@ package main
 
 import (
 	"flag"
+	"github.com/belljustin/captainhook/captainhook"
 	"log"
 
 	"github.com/hibiken/asynq"
 
-	"github.com/belljustin/captainhook"
 	"github.com/belljustin/captainhook/storage/postgres"
 )
 
@@ -21,6 +21,7 @@ func main() {
 	)
 	storage := postgres.NewStorage()
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: *redisAddr})
+	defer asynqClient.Close()
 
 	signMessageTaskHandler := captainhook.SignMessageTaskHandler{Storage: storage, AsynqClient: asynqClient}
 	createSubscriptionTaskHandler := captainhook.CreateSubscriptionTaskHandler{Storage: storage}
